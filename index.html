@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FocusRank — Level Up Your Studies</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ===== FOCUS MODE OVERLAY ===== -->
+  <div id="focus-overlay" class="hidden">
+    <button id="exit-focus-btn" class="btn-ghost">✕ Quitter le mode Focus</button>
+    <div class="focus-content">
+      <div class="focus-task-display">
+        <span class="focus-label">MISSION EN COURS</span>
+        <p id="focus-current-task">Aucune tâche sélectionnée</p>
+      </div>
+      <!-- Timer dupliqué dans focus mode -->
+      <div class="focus-timer-area">
+        <svg class="timer-ring-focus" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="88"/>
+          <circle class="ring-progress" id="focus-ring" cx="100" cy="100" r="88"/>
+        </svg>
+        <div class="focus-timer-text">
+          <span id="focus-time-display">25:00</span>
+          <span id="focus-timer-label">TRAVAIL</span>
+        </div>
+      </div>
+      <div class="focus-controls">
+        <button id="focus-start-btn" class="btn-primary">▶ START</button>
+        <button id="focus-pause-btn" class="btn-ghost">⏸ PAUSE</button>
+        <button id="focus-reset-btn" class="btn-ghost">↺ RESET</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== XP POPUP ===== -->
+  <div id="xp-popup" class="xp-popup hidden">+0 XP</div>
+
+  <!-- ===== LEVEL UP OVERLAY ===== -->
+  <div id="levelup-overlay" class="levelup-overlay hidden">
+    <div class="levelup-card">
+      <div class="levelup-glow"></div>
+      <span class="levelup-label">LEVEL UP!</span>
+      <span id="levelup-new" class="levelup-number">2</span>
+      <span id="levelup-rank" class="levelup-rank">Silver</span>
+      <button id="levelup-close" class="btn-primary">CONTINUER</button>
+    </div>
+  </div>
+
+  <!-- ===== HEADER ===== -->
+  <header class="site-header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">FOCUS<span class="logo-accent">RANK</span></span>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <!-- XP BAR -->
+      <div class="xp-bar-container">
+        <div class="xp-bar-labels">
+          <span class="xp-level-badge" id="header-level">LVL <span id="level-num">1</span></span>
+          <span class="xp-text" id="xp-text">0 / 100 XP</span>
+        </div>
+        <div class="xp-bar-track">
+          <div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Streak -->
+      <div class="streak-badge" id="streak-badge">
+        <span class="streak-icon">🔥</span>
+        <span class="streak-count" id="streak-count">0</span>
+        <span class="streak-label">jours</span>
+      </div>
+      <!-- Rang -->
+      <div class="rank-badge" id="rank-badge">
+        <span class="rank-icon" id="rank-icon">🥉</span>
+        <span class="rank-name" id="rank-name">Bronze</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== NAV TABS ===== -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="tasks">⚔ MISSIONS</button>
+    <button class="tab-btn" data-tab="pomodoro">⏱ POMODORO</button>
+    <button class="tab-btn" data-tab="stats">📊 STATS</button>
+    <button class="tab-btn" data-tab="profile">🏆 PROFIL</button>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+
+    <!-- ========== TAB: MISSIONS ========== -->
+    <section id="tab-tasks" class="tab-panel active">
+      <div class="panel-grid">
+
+        <!-- Objectif du jour -->
+        <div class="card card-daily-goal" id="daily-goal-card">
+          <div class="card-header">
+            <span class="card-title">🎯 OBJECTIF DU JOUR</span>
+            <button class="btn-icon" id="edit-goal-btn" title="Modifier">✏</button>
+          </div>
+          <div id="goal-setup" class="goal-setup hidden">
+            <div class="goal-inputs">
+              <label>Tâches à compléter
+                <input type="number" id="goal-tasks-input" min="1" max="20" value="4" />
+              </label>
+              <label>Sessions Pomodoro
+                <input type="number" id="goal-sessions-input" min="0" max="20" value="2" />
+              </label>
+            </div>
+            <button class="btn-primary" id="save-goal-btn">Valider</button>
+          </div>
+          <div id="goal-display" class="goal-display">
+            <div class="goal-row">
+              <span>📋 Tâches</span>
+              <div class="goal-progress-bar">
+                <div class="goal-bar-fill" id="goal-tasks-bar" style="width:0%"></div>
+              </div>
+              <span id="goal-tasks-text">0/4</span>
+            </div>
+            <div class="goal-row">
+              <span>⏱ Sessions</span>
+              <div class="goal-progress-bar">
+                <div class="goal-bar-fill" id="goal-sessions-bar" style="width:0%"></div>
+              </div>
+              <span id="goal-sessions-text">0/2</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ajouter un objectif -->
+        <div class="card card-add-task">
+          <div class="card-header">
+            <span class="card-title">⚡ NOUVELLE MISSION</span>
+          </div>
+          <div class="add-task-form">
+            <input
+              type="text"
+              id="objective-input"
+              class="task-input"
+              placeholder="Ex: Réviser maths chapitre 5..."
+              autocomplete="off"
+            />
+            <button class="btn-primary" id="generate-tasks-btn">GÉNÉRER LES TÂCHES</button>
+          </div>
+        </div>
+
+        <!-- Liste des tâches -->
+        <div class="card card-tasks">
+          <div class="card-header">
+            <span class="card-title">📋 MES MISSIONS</span>
+            <span class="task-count" id="task-progress-label">0/0 terminé</span>
+          </div>
+          <div id="task-list" class="task-list">
+            <div class="empty-state">
+              <span class="empty-icon">🎮</span>
+              <p>Aucune mission. Génère des tâches ci-dessus !</p>
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn-danger" id="clear-tasks-btn">🗑 Effacer tout</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== TAB: POMODORO ========== -->
+    <section id="tab-pomodoro" class="tab-panel">
+      <div class="panel-grid pomodoro-grid">
+
+        <!-- Timer principal -->
+        <div class="card card-timer">
+          <div class="card-header">
+            <span class="card-title">⏱ POMODORO TIMER</span>
+            <button class="btn-focus" id="focus-mode-btn">🎯 MODE FOCUS</button>
+          </div>
+
+          <!-- Sélection du mode -->
+          <div class="timer-mode-selector">
+            <button class="mode-btn active" data-work="25" data-break="5">25 / 5 min</button>
+            <button class="mode-btn" data-work="50" data-break="10">50 / 10 min</button>
+          </div>
+
+          <!-- Cercle animé -->
+          <div class="timer-circle-wrapper">
+            <svg class="timer-ring" viewBox="0 0 200 200">
+              <circle class="ring-bg" cx="100" cy="100" r="88"/>
+              <circle class="ring-progress" id="main-ring" cx="100" cy="100" r="88"/>
+            </svg>
+            <div class="timer-display">
+              <span id="time-display">25:00</span>
+              <span id="timer-phase-label" class="phase-label">TRAVAIL</span>
+            </div>
+          </div>
+
+          <!-- Contrôles -->
+          <div class="timer-controls">
+            <button class="btn-primary" id="start-btn">▶ START</button>
+            <button class="btn-ghost" id="pause-btn">⏸ PAUSE</button>
+            <button class="btn-ghost" id="reset-btn">↺ RESET</button>
+          </div>
+
+          <!-- Compteur sessions -->
+          <div class="session-dots" id="session-dots">
+            <span class="dot" id="dot-0"></span>
+            <span class="dot" id="dot-1"></span>
+            <span class="dot" id="dot-2"></span>
+            <span class="dot" id="dot-3"></span>
+          </div>
+          <p class="session-counter">Sessions aujourd'hui : <strong id="session-count-display">0</strong></p>
+        </div>
+
+        <!-- Sons & réglages -->
+        <div class="card card-sound">
+          <div class="card-header">
+            <span class="card-title">🔔 OPTIONS</span>
+          </div>
+          <div class="options-list">
+            <label class="toggle-option">
+              <span>Son fin de session</span>
+              <input type="checkbox" id="sound-toggle" checked />
+              <span class="toggle-slider"></span>
+            </label>
+            <label class="toggle-option">
+              <span>Notification navigateur</span>
+              <input type="checkbox" id="notif-toggle" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="card-header" style="margin-top:1.5rem">
+            <span class="card-title">⚡ XP PAR ACTION</span>
+          </div>
+          <div class="xp-table">
+            <div class="xp-row"><span>✅ Tâche terminée</span><span class="xp-val">+10 XP</span></div>
+            <div class="xp-row"><span>⏱ Session Pomodoro</span><span class="xp-val">+25 XP</span></div>
+            <div class="xp-row"><span>🎯 Objectif du jour</span><span class="xp-val">+50 XP</span></div>
+            <div class="xp-row"><span>🔥 Bonus streak</span><span class="xp-val">+10%</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== TAB: STATS ========== -->
+    <section id="tab-stats" class="tab-panel">
+      <div class="panel-grid stats-grid">
+
+        <!-- Résumé du jour -->
+        <div class="card card-today-stats">
+          <div class="card-header">
+            <span class="card-title">📈 AUJOURD'HUI</span>
+            <span class="date-badge" id="today-date"></span>
+          </div>
+          <div class="stats-summary">
+            <div class="stat-box">
+              <span class="stat-icon">⏰</span>
+              <span class="stat-value" id="stat-time">0h 00m</span>
+              <span class="stat-label">Temps étudié</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon">✅</span>
+              <span class="stat-value" id="stat-tasks">0</span>
+              <span class="stat-label">Tâches</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon">🍅</span>
+              <span class="stat-value" id="stat-sessions">0</span>
+              <span class="stat-label">Sessions</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-icon">⚡</span>
+              <span class="stat-value" id="stat-xp-today">0</span>
+              <span class="stat-label">XP gagnés</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Graphique activité hebdomadaire -->
+        <div class="card card-chart">
+          <div class="card-header">
+            <span class="card-title">📊 ACTIVITÉ (7 JOURS)</span>
+          </div>
+          <canvas id="activity-chart" height="180"></canvas>
+        </div>
+
+        <!-- Graphique sessions -->
+        <div class="card card-chart-sessions">
+          <div class="card-header">
+            <span class="card-title">🍅 SESSIONS CETTE SEMAINE</span>
+          </div>
+          <canvas id="sessions-chart" height="180"></canvas>
+        </div>
+
+        <!-- Bouton reset stats -->
+        <div class="card card-reset">
+          <div class="card-header">
+            <span class="card-title">⚙ DONNÉES</span>
+          </div>
+          <p class="reset-warning">Réinitialiser toutes les statistiques et données de l'application.</p>
+          <button class="btn-danger" id="reset-all-btn">🗑 Réinitialiser tout</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== TAB: PROFIL ========== -->
+    <section id="tab-profile" class="tab-panel">
+      <div class="panel-grid profile-grid">
+
+        <!-- Carte profil -->
+        <div class="card card-profile">
+          <div class="profile-banner"></div>
+          <div class="profile-info">
+            <div class="profile-avatar" id="profile-avatar">
+              <span id="avatar-rank-icon">🥉</span>
+            </div>
+            <div class="profile-meta">
+              <h2 class="profile-name" id="profile-rank-name">Bronze Scholar</h2>
+              <p class="profile-sub">Niveau <span id="profile-level">1</span> · <span id="profile-total-xp">0</span> XP total</p>
+            </div>
+          </div>
+          <!-- XP bar profil -->
+          <div class="profile-xp">
+            <div class="xp-bar-labels">
+              <span>LVL <span id="profile-level-label">1</span></span>
+              <span id="profile-xp-label">0 / 100 XP</span>
+            </div>
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" id="profile-xp-bar" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Système de rangs -->
+        <div class="card card-ranks">
+          <div class="card-header">
+            <span class="card-title">🏆 SYSTÈME DE RANGS</span>
+          </div>
+          <div class="ranks-list" id="ranks-list">
+            <!-- Généré par JS -->
+          </div>
+        </div>
+
+        <!-- Records -->
+        <div class="card card-records">
+          <div class="card-header">
+            <span class="card-title">🌟 RECORDS</span>
+          </div>
+          <div class="records-list">
+            <div class="record-row">
+              <span>🔥 Meilleur streak</span>
+              <span class="record-val" id="rec-streak">0 jours</span>
+            </div>
+            <div class="record-row">
+              <span>✅ Tâches total</span>
+              <span class="record-val" id="rec-tasks">0</span>
+            </div>
+            <div class="record-row">
+              <span>🍅 Sessions total</span>
+              <span class="record-val" id="rec-sessions">0</span>
+            </div>
+            <div class="record-row">
+              <span>⏰ Temps total</span>
+              <span class="record-val" id="rec-time">0h</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== AUDIO (sons optionnels) ===== -->
+  <!-- Sons générés via Web Audio API dans script.js -->
+
+  <script src="script.js"></script>
+</body>
+</html>
